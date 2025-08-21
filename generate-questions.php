@@ -53,8 +53,43 @@ if ($input === null || !is_array($input)) {
 
 $notes = $input['notes'] ?? '';
 
-// Log the notes for debugging
-error_log("AI Request Notes: " . $notes);
+// Validate and sanitize the notes input
+if (!is_string($notes)) {
+    error_log('Invalid notes input - not a string');
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid notes input']);
+    exit;
+}
+
+// Check length limits (reasonable for support ticket descriptions)
+if (strlen($notes) > 2000) {
+    error_log('Notes input too long: ' . strlen($notes) . ' characters');
+    http_response_code(400);
+    echo json_encode(['error' => 'Notes too long - please keep under 2000 characters']);
+    exit;
+}
+
+if (strlen($notes) < 10) {
+    error_log('Notes input too short: ' . strlen($notes) . ' characters');
+    http_response_code(400);
+    echo json_encode(['error' => 'Notes too short - please provide more details (minimum 10 characters)']);
+    exit;
+}
+
+// Sanitize the notes input
+$notes = htmlspecialchars($notes, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+$notes = trim($notes);
+
+// Additional validation - check for potentially harmful content
+if (preg_match('/<script|javascript:|vbscript:|onload=|onerror=/i', $notes)) {
+    error_log('Potentially harmful content detected in notes');
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid content detected in notes']);
+    exit;
+}
+
+// Log the sanitized notes for debugging
+error_log("AI Request Notes (sanitized): " . $notes);
 
 if (empty($notes)) {
     http_response_code(400);

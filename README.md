@@ -553,6 +553,8 @@ if (empty($azureEndpoint) && empty($openaiKey)) {
 ## 🔄 Updates & Maintenance
 
 ### Recent Enhancements
+- **Urgency Handling Improvement**: Modified urgency confirmation logic to treat no response as acceptance, ensuring webhook always receives clear urgency status (August 21, 2025)
+- **Input Validation & Sanitization**: Added comprehensive input validation and sanitization in generate-questions.php for security and data integrity (August 21, 2025)
 - **Iframe Fallback Handling**: Added proper timeout management and fallback handling to ensure submit button feedback even when iframe events don't fire (August 21, 2025)
 - **Configuration Caching**: Implemented caching mechanism for webhook configuration to avoid repeated network requests and improve submission speed (August 21, 2025)
 - **Dynamic Button Detection**: Replaced fixed delay with intelligent polling mechanism for submit button availability in scrollToSubmit function (August 21, 2025)

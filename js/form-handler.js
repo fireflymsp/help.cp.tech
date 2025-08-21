@@ -494,6 +494,14 @@ function captureAIQuestionsAndAnswers() {
         questionsHidden.value = 'No AI questions generated - AI review disabled';
         answersHidden.value = 'No answers provided - AI review disabled';
         document.getElementById('urgencyHidden').value = 'MEDIUM: Standard support request';
+        
+        // Set default urgency confirmation for non-AI submissions
+        const urgencyConfirmedHidden = document.getElementById('urgencyConfirmedHidden');
+        if (!urgencyConfirmedHidden.value) {
+            urgencyConfirmedHidden.value = 'Standard priority (AI review disabled)';
+            console.log('Setting default urgency confirmation for non-AI submission');
+        }
+        
         console.log('AI review disabled - using default values for submission');
         return;
     }
@@ -522,6 +530,13 @@ function captureAIQuestionsAndAnswers() {
         
         // Urgency and impact are already captured in hidden fields when AI generates questions
         console.log('Urgency level captured:', document.getElementById('urgencyHidden').value);
+        
+        // Set default urgency confirmation if user didn't explicitly respond
+        const urgencyConfirmedHidden = document.getElementById('urgencyConfirmedHidden');
+        if (!urgencyConfirmedHidden.value) {
+            urgencyConfirmedHidden.value = 'Accepted by default (no explicit response)';
+            console.log('Setting default urgency confirmation: Accepted by default');
+        }
         
         // Log URL parameters if they exist
         const computerName = document.getElementById('computerNameHidden').value;
@@ -564,5 +579,12 @@ function captureAIQuestionsAndAnswers() {
         questionsHidden.value = 'No AI questions generated';
         answersHidden.value = 'No answers provided';
         document.getElementById('urgencyHidden').value = 'MEDIUM: Standard support request';
+        
+        // Set default urgency confirmation when no questions are generated
+        const urgencyConfirmedHidden = document.getElementById('urgencyConfirmedHidden');
+        if (!urgencyConfirmedHidden.value) {
+            urgencyConfirmedHidden.value = 'Standard priority (no AI questions)';
+            console.log('Setting default urgency confirmation when no questions generated');
+        }
     }
 }
