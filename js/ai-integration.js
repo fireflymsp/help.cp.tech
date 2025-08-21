@@ -26,7 +26,7 @@ async function generateFollowUpQuestions(notesText) {
         
         // API key is now secured on the server side
         
-        const response = await fetch('/generate-questions.php', {
+        const response = await fetch('generate-questions.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -38,6 +38,15 @@ async function generateFollowUpQuestions(notesText) {
         
         if (response.ok) {
             const data = await response.json();
+            
+            // Validate response structure before accessing nested properties
+            if (!data || !Array.isArray(data.choices) || data.choices.length === 0 || 
+                !data.choices[0] || !data.choices[0].message || 
+                typeof data.choices[0].message.content !== 'string') {
+                console.error('Unexpected API response structure:', data);
+                throw new Error('Unexpected API response structure');
+            }
+            
             const content = data.choices[0].message.content.trim();
             
             console.log('Full AI response:', content);
@@ -150,34 +159,39 @@ async function generateFollowUpQuestions(notesText) {
                     urgencyText.innerHTML = `
                         <div style="background: #dc3545; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);">
                             <strong>High Priority Issue Detected</strong><br>
-                            <small style="font-size: 14px; opacity: 0.9; margin-top: 6px; display: block;">${urgencyReason}</small>
+                            <small style="font-size: 14px; opacity: 0.9; margin-top: 6px; display: block;"></small>
                         </div>
                         <p style="margin-bottom: 15px; font-size: 16px; line-height: 1.5;"><strong>We've identified this as a high-priority issue.</strong> To help us respond appropriately, please confirm if this urgency level is correct and tell us about the business impact.</p>
                     `;
+                    urgencyText.querySelector('small').textContent = urgencyReason;
                 } else if (urgencyLevel === 'MEDIUM') {
                     urgencyText.innerHTML = `
                         <div style="background: #ffc107; color: #212529; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);">
                             <strong>Medium Priority Issue</strong><br>
-                            <small style="font-size: 14px; opacity: 0.8; margin-top: 6px; display: block;">${urgencyReason}</small>
+                            <small style="font-size: 14px; opacity: 0.8; margin-top: 6px; display: block;"></small>
                         </div>
                         <p style="margin-bottom: 15px; font-size: 16px; line-height: 1.5;"><strong>We've identified this as a medium-priority issue.</strong> Please confirm if this urgency level seems correct to you.</p>
                     `;
+                    urgencyText.querySelector('small').textContent = urgencyReason;
                 } else {
                     urgencyText.innerHTML = `
                         <div style="background: #28a745; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);">
                             <strong>Low Priority Issue</strong><br>
-                            <small style="font-size: 14px; opacity: 0.9; margin-top: 6px; display: block;">${urgencyReason}</small>
+                            <small style="font-size: 14px; opacity: 0.9; margin-top: 6px; display: block;"></small>
                         </div>
                         <p style="margin-bottom: 15px; font-size: 16px; line-height: 1.5;"><strong>We've identified this as a low-priority issue.</strong> Please confirm if this urgency level seems correct to you.</p>
                     `;
+                    urgencyText.querySelector('small').textContent = urgencyReason;
                 }
                 
                 urgencySection.style.display = 'block';
                 
 
                 
-                // Create answer fields for each question
+                // Create answer fields for each question using DocumentFragment for better performance
                 summaryAnswersContainer.innerHTML = '';
+                const questionFragment = document.createDocumentFragment();
+                
                 questionLines.forEach((question, index) => {
                     if (question.trim().length > 0) { 
                         const questionDiv = document.createElement('div');
@@ -228,13 +242,22 @@ async function generateFollowUpQuestions(notesText) {
                         });
                         
                         questionDiv.appendChild(answerInput);
-                        summaryAnswersContainer.appendChild(questionDiv);
+                        questionFragment.appendChild(questionDiv);
                     }
                 });
+                
+                // Batch append all questions at once to minimize reflows
+                summaryAnswersContainer.appendChild(questionFragment);
             }
             
-            // Questions generated successfully
-            console.log('AI questions generated successfully');
+                            // Questions generated successfully
+                console.log('AI questions generated successfully');
+                
+                // Use requestAnimationFrame for non-critical UI updates to improve responsiveness
+                requestAnimationFrame(() => {
+                    // Any additional UI updates can go here if needed
+                    console.log('AI processing complete - UI updated');
+                });
         } else {
             throw new Error('Failed to get questions');
         }
