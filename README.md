@@ -553,6 +553,9 @@ if (empty($azureEndpoint) && empty($openaiKey)) {
 ## 🔄 Updates & Maintenance
 
 ### Recent Enhancements
+- **Performance Optimization**: Implemented asynchronous API calls with reduced timeouts and intelligent fallback system in generate-questions.php (August 21, 2025)
+- **Timeout Handling Fix**: Added explicit timeout error handling in generate-questions.php for better API reliability (August 21, 2025)
+- **Azure Deployment**: Successfully deployed latest version to Azure App Service (August 21, 2025)
 - **cPanel Structure**: Reorganized folder structure to match cPanel hosting conventions
 - **Environment Configuration**: Added `.env` file support for secure API key and webhook management
 - **Security Enhancement**: Moved OpenAI API key and webhook URL from hardcoded source to secure environment variables

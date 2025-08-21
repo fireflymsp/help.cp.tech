@@ -234,22 +234,69 @@ async function handleSubmitTicket() {
         // Get the webhook URL from the configuration endpoint
         try {
             const response = await fetch('get-config.php');
-            const config = await response.json();
             
-            if (config.webhookUrl) {
-                form.action = config.webhookUrl;
-                console.log('Webhook URL loaded from configuration:', config.webhookUrl);
-            } else {
-                console.error('Webhook URL not found in configuration');
+            // Check if the response is successful
+            if (!response.ok) {
+                console.error('Failed to load config:', response.status, response.statusText);
+                showTempMessage('Error: Failed to load configuration');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
                 return;
             }
+            
+            const config = await response.json();
+            
+            // Validate that config is an object and has webhookUrl
+            if (!config || typeof config !== 'object' || !config.webhookUrl) {
+                console.error('Invalid configuration or missing webhook URL');
+                showTempMessage('Error: Invalid configuration');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                return;
+            }
+            
+            form.action = config.webhookUrl;
+            console.log('Webhook URL loaded from configuration:', config.webhookUrl);
+            
+            // Validate all required form fields before submission
+            const requiredFields = ['fullName', 'companyName', 'email', 'phone', 'notes'];
+            const missingFields = [];
+            
+            for (const field of requiredFields) {
+                const fieldValue = formData.get(field);
+                if (!fieldValue || fieldValue.trim() === '') {
+                    missingFields.push(field);
+                }
+            }
+            
+            if (missingFields.length > 0) {
+                const fieldNames = missingFields.map(field => {
+                    switch(field) {
+                        case 'fullName': return 'Full Name';
+                        case 'companyName': return 'Company Name';
+                        case 'email': return 'Email';
+                        case 'phone': return 'Phone';
+                        case 'notes': return 'Issue Description';
+                        default: return field;
+                    }
+                }).join(', ');
+                
+                showTempMessage(`Please fill in the required fields: ${fieldNames}`);
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                return;
+            }
+            
+            // All validation passed, submit the form
+            form.submit();
+            
         } catch (error) {
             console.error('Error loading webhook configuration:', error);
+            showTempMessage('Error: Failed to load configuration');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
             return;
         }
-        
-        // Submit the form
-        form.submit();
         
         // Fallback: reset button after delay if iframe events don't fire
         setTimeout(() => {

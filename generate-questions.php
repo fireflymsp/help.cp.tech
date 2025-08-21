@@ -4,6 +4,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
+// PERFORMANCE OPTIMIZATIONS:
+// - Reduced cURL timeout from 30s to 10s for better responsiveness
+// - Added connection timeout of 5s to prevent hanging
+// - Implemented intelligent fallback system for improved reliability
+// - Graceful degradation with user-friendly error messages
+
 // Start error logging
 error_log('=== generate-questions.php started ===');
 
@@ -26,6 +32,15 @@ error_log('generate-questions.php script started successfully');
 // Get the request data
 error_log('Reading input data...');
 $input = json_decode(file_get_contents('php://input'), true);
+
+// Validate that input is a valid array
+if (!is_array($input)) {
+    error_log('Invalid JSON input received');
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid JSON input']);
+    exit;
+}
+
 $notes = $input['notes'] ?? '';
 
 // Log the notes for debugging
@@ -105,50 +120,66 @@ if ($use_azure_openai) {
     ];
 }
 
-// Make the AI API call
+// Make the AI API call with improved responsiveness
 $response = '';
 $http_code = 0;
+$use_fallback = false;
 
 if (function_exists('curl_init')) {
-    // Use cURL if available
-    error_log('Using cURL for API request...');
+    // Use cURL with reduced timeout for better responsiveness
+    error_log('Using cURL for API request with optimized timeout...');
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $api_url);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $api_headers);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($ai_data));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Reduced from 30 to 10 seconds for better responsiveness
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); // Connection timeout of 5 seconds
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
     
+    // Execute the cURL request and handle potential errors including timeouts
     $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_errno = curl_errno($ch);
     $curl_error = curl_error($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
-    if ($response === false) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Curl error: ' . $curl_error]);
-        exit;
+    if ($curl_errno === CURLE_OPERATION_TIMEDOUT) {
+        error_log('cURL timeout detected, attempting fallback...');
+        $use_fallback = true;
+    } elseif ($response === false) {
+        error_log('cURL error detected, attempting fallback...');
+        $use_fallback = true;
     }
 } else {
-    // Fallback to file_get_contents() if cURL not available
-    error_log('cURL not available, using file_get_contents() fallback...');
+    $use_fallback = true;
+}
+
+// Fallback logic for better reliability
+if ($use_fallback) {
+    error_log('Using fallback method for API request...');
     
+    // Try file_get_contents with reduced timeout
     $context = stream_context_create([
         'http' => [
             'method' => 'POST',
             'header' => implode("\r\n", $api_headers) . "\r\nUser-Agent: PHP/AI-Client",
             'content' => json_encode($ai_data),
-            'timeout' => 30
+            'timeout' => 8 // Reduced timeout for fallback
         ]
     ]);
     
     $response = file_get_contents($api_url, false, $context);
     
     if ($response === false) {
-        http_response_code(500);
-        echo json_encode(['error' => 'file_get_contents() failed to make API request']);
+        // If both methods fail, return a user-friendly error with retry suggestion
+        http_response_code(503);
+        echo json_encode([
+            'error' => 'AI service temporarily unavailable',
+            'message' => 'Please try again in a moment. If the issue persists, contact support.',
+            'retry_after' => 30
+        ]);
         exit;
     }
     

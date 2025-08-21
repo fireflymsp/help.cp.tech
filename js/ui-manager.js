@@ -256,26 +256,29 @@ function updateUrgencyDisplay(urgencyLevel, urgencyReason) {
         urgencyText.innerHTML = `
             <div style="background: #dc3545; color: white; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; font-weight: 500;">
                 <strong>High Priority Issue</strong><br>
-                <small>${urgencyReason}</small>
+                <small></small>
             </div>
             <p style="margin-bottom: 15px;"><strong>We've identified this as a high-priority issue.</strong> To help us respond appropriately, please confirm if this urgency level is correct and tell us about the business impact.</p>
         `;
+        urgencyText.querySelector('small').textContent = urgencyReason;
     } else if (urgencyLevel === 'MEDIUM') {
         urgencyText.innerHTML = `
             <div style="background: #ffc107; color: #212529; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; font-weight: 500;">
                 <strong>Medium Priority Issue</strong><br>
-                <small>${urgencyReason}</small>
+                <small></small>
             </div>
             <p style="margin-bottom: 15px;"><strong>We've identified this as a medium-priority issue.</strong> Please confirm if this urgency level seems correct to you.</p>
         `;
+        urgencyText.querySelector('small').textContent = urgencyReason;
     } else {
         urgencyText.innerHTML = `
             <div style="background: #28a745; color: white; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; font-weight: 500;">
                 <strong>Low Priority Issue</strong><br>
-                <small>${urgencyReason}</small>
+                <small></small>
             </div>
             <p style="margin-bottom: 15px;"><strong>We've identified this as a low-priority issue.</strong> Please confirm if this urgency level seems correct to you.</p>
         `;
+        urgencyText.querySelector('small').textContent = urgencyReason;
     }
 }
 
