@@ -553,6 +553,12 @@ if (empty($azureEndpoint) && empty($openaiKey)) {
 ## 🔄 Updates & Maintenance
 
 ### Recent Enhancements
+- **Iframe Fallback Handling**: Added proper timeout management and fallback handling to ensure submit button feedback even when iframe events don't fire (August 21, 2025)
+- **Configuration Caching**: Implemented caching mechanism for webhook configuration to avoid repeated network requests and improve submission speed (August 21, 2025)
+- **Dynamic Button Detection**: Replaced fixed delay with intelligent polling mechanism for submit button availability in scrollToSubmit function (August 21, 2025)
+- **JSON Validation Fix**: Added proper null checking and empty input validation in generate-questions.php for better error handling (August 21, 2025)
+- **Form Submission Fix**: Replaced direct form.submit() calls with proper event dispatching to respect existing event listeners (August 21, 2025)
+- **Event Listener Fix**: Prevented duplicate event listeners in modal focus trapping for better performance and accessibility (August 21, 2025)
 - **Performance Optimization**: Implemented asynchronous API calls with reduced timeouts and intelligent fallback system in generate-questions.php (August 21, 2025)
 - **Timeout Handling Fix**: Added explicit timeout error handling in generate-questions.php for better API reliability (August 21, 2025)
 - **Azure Deployment**: Successfully deployed latest version to Azure App Service (August 21, 2025)

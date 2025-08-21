@@ -36,6 +36,11 @@ function showAIReviewModal() {
 }
 
 function trapFocusInModal(modal) {
+    // Remove existing focus trap handler if it exists
+    if (modal._trapFocusHandler) {
+        modal.removeEventListener('keydown', modal._trapFocusHandler);
+    }
+    
     const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     const firstElement = focusableElements[0];
     const lastElement = focusableElements[focusableElements.length - 1];
@@ -44,7 +49,8 @@ function trapFocusInModal(modal) {
         firstElement.focus();
     }
     
-    modal.addEventListener('keydown', function(e) {
+    // Create and store the focus trap handler
+    modal._trapFocusHandler = function(e) {
         if (e.key === 'Tab') {
             if (e.shiftKey) {
                 if (document.activeElement === firstElement) {
@@ -58,7 +64,10 @@ function trapFocusInModal(modal) {
                 }
             }
         }
-    });
+    };
+    
+    // Add the event listener once
+    modal.addEventListener('keydown', modal._trapFocusHandler);
 }
 
 function hideAIReviewModal() {
@@ -75,6 +84,10 @@ function hideAIReviewModal() {
             modal.removeEventListener('click', modal._clickHandler);
             delete modal._clickHandler;
         }
+        if (modal._trapFocusHandler) {
+            modal.removeEventListener('keydown', modal._trapFocusHandler);
+            delete modal._trapFocusHandler;
+        }
         
         // Remove tabindex
         modal.removeAttribute('tabindex');
@@ -86,8 +99,8 @@ function hideAIReviewModal() {
 
 
 function scrollToSubmit() {
-            console.log('scrollToSubmit function called');
-    
+    console.log('scrollToSubmit function called');
+
     // Check if we're on the summary page
     const summaryPage = document.getElementById('summaryPage');
     if (!summaryPage || summaryPage.style.display === 'none') {
@@ -95,14 +108,15 @@ function scrollToSubmit() {
         showTempMessage('Please complete the form first');
         return;
     }
-    
-    // Add a small delay to ensure AI questions are generated and submit button is visible
-    setTimeout(() => {
-        // Look for the submit button
+
+    const maxWaitTime = 3000; // max 3 seconds
+    const intervalTime = 100; // check every 100ms
+    let elapsedTime = 0;
+
+    const intervalId = setInterval(() => {
         const submitBtn = document.getElementById('submitTicketBtn');
-        console.log('Looking for submit button:', submitBtn);
-        
         if (submitBtn) {
+            clearInterval(intervalId);
             console.log('Submit button found, attempting to scroll');
             console.log('Button position:', submitBtn.getBoundingClientRect());
             console.log('Button visible:', submitBtn.offsetParent !== null);
@@ -129,31 +143,34 @@ function scrollToSubmit() {
                 showTempMessage('Scrolled to submit button!');
                 
             } catch (error) {
-                            console.error('Error during scroll:', error);
-            showTempMessage('Error during scroll: ' + error.message);
+                console.error('Error during scroll:', error);
+                showTempMessage('Error during scroll: ' + error.message);
             }
-            
         } else {
-            console.error('Submit button not found');
-            
-            // Let's see what buttons exist on the page
-            const allButtons = document.querySelectorAll('button');
-            console.log('All buttons on page:', allButtons);
-            
-            // Look for any button with "submit" in the text or ID
-            const submitLikeButtons = Array.from(allButtons).filter(btn => 
-                btn.textContent.toLowerCase().includes('submit') || 
-                btn.id.toLowerCase().includes('submit')
-            );
-            console.log('Submit-like buttons found:', submitLikeButtons);
-            
-            // Check if the button might be in a different container
-            const summaryContainer = document.querySelector('#summaryPage button[id*="submit"]');
-            console.log('Submit button in summary container:', summaryContainer);
-            
-            showTempMessage('Submit button not found - check console for details');
+            elapsedTime += intervalTime;
+            if (elapsedTime >= maxWaitTime) {
+                clearInterval(intervalId);
+                console.error('Submit button not found within timeout');
+                
+                // Let's see what buttons exist on the page
+                const allButtons = document.querySelectorAll('button');
+                console.log('All buttons on page:', allButtons);
+                
+                // Look for any button with "submit" in the text or ID
+                const submitLikeButtons = Array.from(allButtons).filter(btn => 
+                    btn.textContent.toLowerCase().includes('submit') || 
+                    btn.id.toLowerCase().includes('submit')
+                );
+                console.log('Submit-like buttons found:', submitLikeButtons);
+                
+                // Check if the button might be in a different container
+                const summaryContainer = document.querySelector('#summaryPage button[id*="submit"]');
+                console.log('Submit button in summary container:', summaryContainer);
+                
+                showTempMessage('Submit button not found - please check the form');
+            }
         }
-    }, 500); // 500ms delay to ensure everything is loaded
+    }, intervalTime);
 }
 
 // Urgency Management Functions
@@ -317,8 +334,15 @@ function submitTicketDirectly() {
     if (form) {
         console.log('Quick submitting form to webhook...');
         
-        // Submit the form
-        form.submit();
+        // Submit the form using proper event dispatching
+        const submitEvent = new Event('submit', { cancelable: true });
+        if (form.dispatchEvent(submitEvent)) {
+            // If no preventDefault was called, proceed with submission
+            form.submit();
+        } else {
+            console.log('Quick submit form submission was prevented by event listeners');
+            return; // Exit early if submission was prevented
+        }
         
         // Hide summary page and show confirmation
         document.getElementById('summaryPage').style.display = 'none';

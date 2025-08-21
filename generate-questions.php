@@ -31,11 +31,21 @@ error_log('generate-questions.php script started successfully');
 
 // Get the request data
 error_log('Reading input data...');
-$input = json_decode(file_get_contents('php://input'), true);
+$raw_input = file_get_contents('php://input');
 
-// Validate that input is a valid array
-if (!is_array($input)) {
-    error_log('Invalid JSON input received');
+// Check if raw input is empty
+if (empty($raw_input)) {
+    error_log('Empty input received');
+    http_response_code(400);
+    echo json_encode(['error' => 'No input data received']);
+    exit;
+}
+
+$input = json_decode($raw_input, true);
+
+// Validate that input is not null and is a valid array
+if ($input === null || !is_array($input)) {
+    error_log('Invalid JSON input received - json_decode returned: ' . var_export($input, true));
     http_response_code(400);
     echo json_encode(['error' => 'Invalid JSON input']);
     exit;

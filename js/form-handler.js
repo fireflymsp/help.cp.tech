@@ -1,5 +1,8 @@
 // Form handling module - validation, navigation, and submission
 
+// Cache for configuration to avoid repeated network requests
+let cachedConfig = null;
+
 function handleFileUpload(e) {
     const file = e.target.files[0];
     if (file) {
@@ -207,12 +210,22 @@ async function handleSubmitTicket() {
         const iframe = document.querySelector('iframe[name="hiddenSubmitFrame"]');
         console.log('Iframe found:', !!iframe);
         
+        // Set up fallback timeout for button reset
+        const fallbackTimeout = setTimeout(() => {
+            console.log('Fallback timeout triggered - resetting submit button');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+            showTempMessage('Form submission completed (fallback)');
+        }, 3000);
+        
         if (iframe) {
             // Test if iframe is accessible
             try {
                 iframe.onload = function() {
                     console.log('Form submission completed via iframe');
                     console.log('Iframe content:', iframe.contentDocument?.body?.innerHTML || 'No content');
+                    // Clear fallback timeout since iframe event fired
+                    clearTimeout(fallbackTimeout);
                     // Reset button
                     submitBtn.textContent = originalText;
                     submitBtn.disabled = false;
@@ -220,46 +233,74 @@ async function handleSubmitTicket() {
                 
                 iframe.onerror = function() {
                     console.error('Form submission failed via iframe');
+                    // Clear fallback timeout since iframe event fired
+                    clearTimeout(fallbackTimeout);
                     // Reset button
                     submitBtn.textContent = originalText;
                     submitBtn.disabled = false;
                 };
             } catch (e) {
                 console.error('Error setting up iframe listeners:', e);
+                // If iframe setup fails, clear timeout and reset button immediately
+                clearTimeout(fallbackTimeout);
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             }
         } else {
             console.error('Hidden iframe not found!');
+            // If no iframe, clear timeout and reset button immediately
+            clearTimeout(fallbackTimeout);
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
         }
         
-        // Get the webhook URL from the configuration endpoint
-        try {
-            const response = await fetch('get-config.php');
-            
-            // Check if the response is successful
-            if (!response.ok) {
-                console.error('Failed to load config:', response.status, response.statusText);
+        // Get the webhook URL from the configuration endpoint (with caching)
+        let config;
+        
+        if (cachedConfig) {
+            // Use cached configuration
+            config = cachedConfig;
+            console.log('Using cached webhook URL:', config.webhookUrl);
+        } else {
+            // Fetch configuration if not cached
+            try {
+                const response = await fetch('get-config.php');
+                
+                // Check if the response is successful
+                if (!response.ok) {
+                    console.error('Failed to load config:', response.status, response.statusText);
+                    showTempMessage('Error: Failed to load configuration');
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                    return;
+                }
+                
+                config = await response.json();
+                
+                // Validate that config is an object and has webhookUrl
+                if (!config || typeof config !== 'object' || !config.webhookUrl) {
+                    console.error('Invalid configuration or missing webhook URL');
+                    showTempMessage('Error: Invalid configuration');
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                    return;
+                }
+                
+                // Cache the configuration for future use
+                cachedConfig = config;
+                console.log('Webhook URL loaded and cached:', config.webhookUrl);
+            } catch (error) {
+                console.error('Error loading webhook configuration:', error);
                 showTempMessage('Error: Failed to load configuration');
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
                 return;
             }
-            
-            const config = await response.json();
-            
-            // Validate that config is an object and has webhookUrl
-            if (!config || typeof config !== 'object' || !config.webhookUrl) {
-                console.error('Invalid configuration or missing webhook URL');
-                showTempMessage('Error: Invalid configuration');
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-                return;
-            }
-            
-            form.action = config.webhookUrl;
-            console.log('Webhook URL loaded from configuration:', config.webhookUrl);
+        }
+        
+        form.action = config.webhookUrl;
             
             // Validate all required form fields before submission
-            const requiredFields = ['fullName', 'companyName', 'email', 'phone', 'notes'];
             const missingFields = [];
             
             for (const field of requiredFields) {
@@ -287,22 +328,19 @@ async function handleSubmitTicket() {
                 return;
             }
             
-            // All validation passed, submit the form
-            form.submit();
-            
-        } catch (error) {
-            console.error('Error loading webhook configuration:', error);
-            showTempMessage('Error: Failed to load configuration');
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-            return;
-        }
+            // All validation passed, submit the form using proper event dispatching
+            const submitEvent = new Event('submit', { cancelable: true });
+            if (form.dispatchEvent(submitEvent)) {
+                // If no preventDefault was called, proceed with submission
+                form.submit();
+            } else {
+                console.log('Form submission was prevented by event listeners');
+                // Reset button state since submission was prevented
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
         
-        // Fallback: reset button after delay if iframe events don't fire
-        setTimeout(() => {
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-        }, 3000);
+
         
         // Hide summary page and show confirmation
         const summaryPage = document.getElementById('summaryPage');
